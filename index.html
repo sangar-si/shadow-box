@@ -16,12 +16,11 @@
       font-family: 'Inter', sans-serif;
       background-color: #050505;
       color: #fafafa;
-      overscroll-behavior-y: contain; /* Prevents pull-to-refresh on Android */
+      overscroll-behavior-y: contain;
     }
     .font-bebas {
       font-family: 'Bebas Neue', cursive;
     }
-    /* Simple reset for standalone mode */
     @media (display-mode: standalone) {
       body {
         padding-top: env(safe-area-inset-top);
@@ -31,16 +30,15 @@
 <script type="importmap">
 {
   "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "vite": "https://esm.sh/vite@^7.3.1",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body>
   <div id="root"></div>
@@ -48,7 +46,6 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        // Using relative path for SW
         navigator.serviceWorker.register('sw.js').then(reg => {
           console.log('SW Registered!', reg);
         }).catch(err => {
@@ -57,6 +54,5 @@
       });
     }
   </script>
-<script type="module" src="/index.tsx"></script>
 </body>
 </html>
