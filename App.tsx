@@ -191,7 +191,9 @@ const App: React.FC = () => {
             <Activity className="text-white w-7 h-7" />
           </div>
           <div>
-            <h1 className="text-4xl font-bebas tracking-wider text-white leading-none">APEX <span className="text-red-600">BOX</span></h1>
+            <h1 className="text-3xl md:text-4xl font-bebas tracking-wider text-white leading-none">
+              MUAY THAI <span className="text-red-600">SHADOW BOX</span>
+            </h1>
             <p className="text-zinc-600 text-[10px] uppercase tracking-widest font-bold">
               {isStandalone ? 'Local Native Mode' : 'Web Preview Mode'}
             </p>
