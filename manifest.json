@@ -1,0 +1,25 @@
+
+{
+  "short_name": "ApexBox",
+  "name": "APEX Shadow Box Trainer",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3112/3112833.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3112/3112833.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "background_color": "#050505",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#dc2626",
+  "description": "A professional-grade shadow boxing coach that works entirely offline."
+}

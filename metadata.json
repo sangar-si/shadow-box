@@ -1,0 +1,5 @@
+{
+  "name": "APEX Shadow Box",
+  "description": "A high-performance shadow boxing trainer featuring local zero-latency speech synthesis and customizable tactical call-outs. Fully functional offline.",
+  "requestFramePermissions": []
+}
