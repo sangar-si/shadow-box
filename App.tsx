@@ -429,7 +429,7 @@ const App: React.FC = () => {
       )}
 
       <footer className="mt-auto py-10 text-zinc-700 text-[9px] uppercase font-black tracking-[0.4em] text-center border-t border-zinc-900/50 w-full max-w-5xl">
-        Free app. It-a Costa nothing to use-a.
+        "Free app. It-a Costa nothing to use-a."
       </footer>
 
       <style>{`
