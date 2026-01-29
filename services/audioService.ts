@@ -38,7 +38,7 @@ export const generateAndPlayCallout = (text: string, preferredVoiceName?: string
   }
   
   utterance.voice = voice || null;
-  utterance.rate = 1.35; // Sharp, athletic pace
+  utterance.rate = 1.05; // Sharp, athletic pace
   utterance.pitch = 1.0;
   utterance.volume = 1.0;
 
