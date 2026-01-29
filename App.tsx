@@ -17,14 +17,14 @@ import {
 } from 'lucide-react';
 
 const DEFAULT_CALLOUTS: Callout[] = [
-  { id: '1', text: '1-2', active: true },
-  { id: '2', text: 'Double Jab', active: true },
-  { id: '3', text: 'Slip Left', active: true },
-  { id: '4', text: 'Roll Right', active: true },
-  { id: '5', text: '1-2-3-4', active: true },
-  { id: '6', text: 'Hook-Cross', active: true },
-  { id: '7', text: 'Lead Uppercut', active: true },
-  { id: '8', text: '3-2-3', active: true },
+  { id: '1', text: '1', active: true },
+  { id: '2', text: '2', active: true },
+  { id: '3', text: 'Left', active: true },
+  { id: '4', text: 'Right', active: true },
+  { id: '5', text: 'Pivot in', active: true },
+  { id: '6', text: 'Pivot out', active: true },
+  { id: '7', text: '12', active: true },
+  { id: '8', text: '32', active: true },
 ];
 
 const App: React.FC = () => {
@@ -33,7 +33,7 @@ const App: React.FC = () => {
     roundDuration: 180,
     restDuration: 60,
     prepDuration: 10,
-    calloutFrequency: 4,
+    calloutFrequency: 2,
     calloutFrequencyRandomness: 1.5,
     voiceName: undefined,
   });
