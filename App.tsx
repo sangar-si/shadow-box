@@ -24,7 +24,13 @@ const DEFAULT_CALLOUTS: Callout[] = [
   { id: '5', text: 'Pivot in', active: true },
   { id: '6', text: 'Pivot out', active: true },
   { id: '7', text: '12', active: true },
-  { id: '8', text: '32', active: true },
+  { id: '8', text: 'check left', active: true },
+  { id: '9', text: 'check right', active: true },
+  { id: '10', text: 'catch left', active: true },
+  { id: '11', text: 'catch right', active: true },
+  { id: '12', text: 'pass left', active: true },
+  { id: '13', text: 'pass right', active: true },
+  { id: '14', text: 'double block', active: true },
 ];
 
 const App: React.FC = () => {
