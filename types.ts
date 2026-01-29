@@ -4,6 +4,7 @@ export enum TimerStatus {
   PREPARE = 'PREPARE',
   WORK = 'WORK',
   REST = 'REST',
+  PAUSED = 'PAUSED',
   FINISHED = 'FINISHED'
 }
 
