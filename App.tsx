@@ -10,11 +10,10 @@ import {
   Trash2, 
   Activity, 
   Volume2,
-  ChevronDown,
-  Info,
+  X,
   Download,
-  Smartphone,
-  CheckCircle2
+  RotateCcw,
+  Pause
 } from 'lucide-react';
 
 const DEFAULT_CALLOUTS: Callout[] = [
@@ -34,7 +33,7 @@ const App: React.FC = () => {
     roundDuration: 180,
     restDuration: 60,
     prepDuration: 10,
-    calloutFrequency: 4,
+    calloutFrequency: 2,
     calloutFrequencyRandomness: 1.5,
     voiceName: undefined,
   });
@@ -52,18 +51,51 @@ const App: React.FC = () => {
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const nextCalloutTimeRef = useRef<number>(0);
+  const wakeLockRef = useRef<any>(null);
+  const prevStatusRef = useRef<TimerStatus>(TimerStatus.IDLE);
 
-  // Check if already installed
+  // Screen Wake Lock API management
+  const requestWakeLock = useCallback(async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+        console.log('Wake Lock active');
+        wakeLockRef.current.addEventListener('release', () => {
+          console.log('Wake Lock was released');
+        });
+      } catch (err: any) {
+        console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+      }
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(async () => {
+    if (wakeLockRef.current) {
+      await wakeLockRef.current.release();
+      wakeLockRef.current = null;
+      console.log('Wake Lock released manually');
+    }
+  }, []);
+
+  // Re-acquire wake lock if tab becomes visible again
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (status !== TimerStatus.IDLE && status !== TimerStatus.FINISHED && document.visibilityState === 'visible') {
+        await requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [status, requestWakeLock]);
+
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
       setIsStandalone(true);
     }
   }, []);
 
-  // Handle PWA Installation Prompt
   useEffect(() => {
     const handler = (e: any) => {
-      console.log('beforeinstallprompt fired');
       e.preventDefault();
       setDeferredPrompt(e);
     };
@@ -80,7 +112,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Initialize voices
   useEffect(() => {
     const loadVoices = () => {
       const voices = getAvailableVoices();
@@ -104,12 +135,30 @@ const App: React.FC = () => {
     setStatus(TimerStatus.PREPARE);
     setTimeLeft(settings.prepDuration);
     setCurrentRound(1);
+    requestWakeLock();
+  };
+
+  const handlePause = () => {
+    prevStatusRef.current = status;
+    setStatus(TimerStatus.PAUSED);
+    window.speechSynthesis.cancel();
+  };
+
+  const handleResume = () => {
+    // Return to whatever the status was before pausing
+    setStatus(prevStatusRef.current !== TimerStatus.PAUSED ? prevStatusRef.current : TimerStatus.WORK);
   };
 
   const handleStop = () => {
     setStatus(TimerStatus.IDLE);
     window.speechSynthesis.cancel();
+    releaseWakeLock();
     if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const handleRestart = () => {
+    handleStop();
+    setTimeout(() => handleStart(), 100);
   };
 
   const addCallout = () => {
@@ -125,7 +174,7 @@ const App: React.FC = () => {
   }, [callouts]);
 
   useEffect(() => {
-    if (status === TimerStatus.IDLE || status === TimerStatus.FINISHED) {
+    if (status === TimerStatus.IDLE || status === TimerStatus.FINISHED || status === TimerStatus.PAUSED) {
       if (timerRef.current) clearInterval(timerRef.current);
       return;
     }
@@ -145,6 +194,7 @@ const App: React.FC = () => {
             } else {
               triggerCallout("Workout Complete");
               setStatus(TimerStatus.FINISHED);
+              releaseWakeLock();
               return 0;
             }
           } else if (status === TimerStatus.REST) {
@@ -175,7 +225,7 @@ const App: React.FC = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [status, currentRound, settings, getRandomCallout, triggerCallout]);
+  }, [status, currentRound, settings, getRandomCallout, triggerCallout, releaseWakeLock]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -210,7 +260,7 @@ const App: React.FC = () => {
             </button>
           )}
           <button 
-            onClick={() => setShowSettings(!showSettings)}
+            onClick={() => setShowSettings(true)}
             className="p-3 bg-zinc-900/50 rounded-xl hover:bg-zinc-800 transition-all border border-zinc-800 group"
           >
             <SettingsIcon className="w-6 h-6 text-zinc-400 group-hover:rotate-90 transition-transform duration-500" />
@@ -228,15 +278,15 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className={`absolute top-10 right-10 font-bebas text-2xl uppercase tracking-[0.2em] px-4 py-1 rounded-full border ${status === TimerStatus.WORK ? 'text-red-600 border-red-600/30 bg-red-600/5' : 'text-zinc-500 border-zinc-800'}`}>
+            <div className={`absolute top-10 right-10 font-bebas text-2xl uppercase tracking-[0.2em] px-4 py-1 rounded-full border ${status === TimerStatus.WORK ? 'text-red-600 border-red-600/30 bg-red-600/5' : status === TimerStatus.PAUSED ? 'text-amber-500 border-amber-500/30 bg-amber-500/5' : 'text-zinc-500 border-zinc-800'}`}>
               {status === TimerStatus.IDLE ? 'Standby' : status}
             </div>
 
-            <div className={`text-[120px] md:text-[200px] font-bebas leading-none select-none transition-colors duration-500 ${status === TimerStatus.WORK ? 'text-white' : 'text-zinc-700'}`}>
+            <div className={`text-[120px] md:text-[200px] font-bebas leading-none select-none transition-colors duration-500 ${status === TimerStatus.WORK ? 'text-white' : status === TimerStatus.PAUSED ? 'text-amber-500/80' : 'text-zinc-700'}`}>
               {formatTime(timeLeft)}
             </div>
 
-            <div className="absolute bottom-12 flex gap-6 z-10">
+            <div className="absolute bottom-12 flex flex-wrap justify-center gap-4 z-10 px-4">
               {status === TimerStatus.IDLE || status === TimerStatus.FINISHED ? (
                 <button 
                   onClick={handleStart}
@@ -245,18 +295,51 @@ const App: React.FC = () => {
                   <Play className="w-6 h-6 fill-current" />
                   Begin Training
                 </button>
+              ) : status === TimerStatus.PAUSED ? (
+                <>
+                  <button 
+                    onClick={handleResume}
+                    className="bg-red-600 hover:bg-red-700 text-white px-10 py-4 rounded-2xl transition-all hover:scale-105 shadow-[0_0_40px_rgba(220,38,38,0.4)] flex items-center gap-3 font-bebas text-2xl tracking-widest"
+                  >
+                    <Play className="w-6 h-6 fill-current" />
+                    Resume
+                  </button>
+                  <button 
+                    onClick={handleRestart}
+                    className="bg-zinc-800 hover:bg-zinc-700 text-white px-10 py-4 rounded-2xl transition-all hover:scale-105 flex items-center gap-3 font-bebas text-2xl tracking-widest border border-zinc-700"
+                  >
+                    <RotateCcw className="w-6 h-6" />
+                    Restart
+                  </button>
+                  <button 
+                    onClick={handleStop}
+                    className="bg-zinc-100 hover:bg-white text-zinc-900 px-10 py-4 rounded-2xl transition-all hover:scale-105 flex items-center gap-3 font-bebas text-2xl tracking-widest"
+                  >
+                    <Square className="w-6 h-6 fill-current" />
+                    Stop
+                  </button>
+                </>
               ) : (
-                <button 
-                  onClick={handleStop}
-                  className="bg-zinc-100 hover:bg-white text-zinc-900 px-12 py-4 rounded-2xl transition-all hover:scale-105 flex items-center gap-3 font-bebas text-2xl tracking-widest"
-                >
-                  <Square className="w-6 h-6 fill-current" />
-                  Stop session
-                </button>
+                <>
+                  <button 
+                    onClick={handlePause}
+                    className="bg-zinc-800 hover:bg-zinc-700 text-white px-12 py-4 rounded-2xl transition-all hover:scale-105 flex items-center gap-3 font-bebas text-2xl tracking-widest border border-zinc-700"
+                  >
+                    <Pause className="w-6 h-6 fill-current" />
+                    Pause
+                  </button>
+                  <button 
+                    onClick={handleStop}
+                    className="bg-zinc-100 hover:bg-white text-zinc-900 px-12 py-4 rounded-2xl transition-all hover:scale-105 flex items-center gap-3 font-bebas text-2xl tracking-widest"
+                  >
+                    <Square className="w-6 h-6 fill-current" />
+                    Stop
+                  </button>
+                </>
               )}
             </div>
 
-            <div className="absolute bottom-0 left-0 h-1.5 bg-red-600 transition-all duration-1000 ease-linear shadow-[0_0_15px_rgba(220,38,38,0.8)]" 
+            <div className={`absolute bottom-0 left-0 h-1.5 transition-all duration-1000 ease-linear shadow-[0_0_15px_rgba(220,38,38,0.8)] ${status === TimerStatus.PAUSED ? 'bg-amber-500' : 'bg-red-600'}`} 
                  style={{ width: `${(timeLeft / (status === TimerStatus.WORK ? settings.roundDuration : status === TimerStatus.REST ? settings.restDuration : settings.prepDuration)) * 100}%` }} />
           </div>
 
@@ -329,99 +412,64 @@ const App: React.FC = () => {
         </div>
       </main>
 
+      {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-          <div className="bg-zinc-900 w-full max-w-2xl rounded-[2.5rem] border border-zinc-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl bg-black/60">
+          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
             <div className="p-8 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
-              <div>
-                <h2 className="font-bebas text-4xl text-white tracking-widest leading-none">CONFIG</h2>
-                <p className="text-zinc-600 text-[10px] uppercase font-bold mt-1">Fine-tune your training environment</p>
-              </div>
-              <button onClick={() => setShowSettings(false)} className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-800 text-zinc-500 hover:text-white transition-colors">
-                <Square className="w-4 h-4 rotate-45" />
+              <h2 className="font-bebas text-3xl text-white tracking-widest flex items-center gap-3">
+                <SettingsIcon className="w-6 h-6 text-red-600" />
+                Workout Config
+              </h2>
+              <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-500 hover:text-white">
+                <X className="w-6 h-6" />
               </button>
             </div>
-
-            <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
-              {!isStandalone && !deferredPrompt && (
-                <div className="p-6 bg-red-600/10 border border-red-600/30 rounded-3xl space-y-3">
-                  <div className="flex items-center gap-3 text-red-500 font-bold text-sm">
-                    <Smartphone className="w-5 h-5" />
-                    Android Install Guide
-                  </div>
-                  <p className="text-zinc-400 text-xs leading-relaxed">
-                    If you don't see the "Install" button, you can manually install by:
-                  </p>
-                  <ol className="text-zinc-500 text-xs list-decimal list-inside space-y-1">
-                    <li>Tap the <strong>three dots (⋮)</strong> in Chrome.</li>
-                    <li>Select <strong>"Add to Home Screen"</strong> or <strong>"Install app"</strong>.</li>
-                    <li>Open from your home screen for full offline support.</li>
-                  </ol>
+            
+            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest">Rounds</label>
+                  <input type="number" value={settings.roundCount} onChange={e => setSettings({...settings, roundCount: Number(e.target.value)})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-red-600 transition-colors" />
                 </div>
-              )}
-
-              {isStandalone && (
-                <div className="p-4 bg-green-600/10 border border-green-600/30 rounded-2xl flex items-center gap-3 text-green-500 text-xs font-bold">
-                  <CheckCircle2 className="w-5 h-5" />
-                  Application installed & optimized for offline use.
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <h3 className="text-zinc-400 font-bebas text-xl tracking-wider border-b border-zinc-800 pb-2">Audio Performance</h3>
-                <div className="relative group">
-                  <label className="text-[10px] uppercase font-bold text-zinc-600 block mb-2 tracking-widest">Select Coach Voice</label>
-                  <div className="relative">
-                    <select 
-                      value={settings.voiceName || ''}
-                      onChange={(e) => setSettings({...settings, voiceName: e.target.value})}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-white appearance-none focus:outline-none focus:border-red-600 transition-colors cursor-pointer"
-                    >
-                      <option value="">Default System Engine</option>
-                      {availableVoices.map((v, i) => (
-                        <option key={i} value={v.name}>{v.name} ({v.lang})</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none w-5 h-5" />
-                  </div>
-                  <p className="text-[9px] text-zinc-600 mt-2 flex items-center gap-1">
-                    <Info className="w-3 h-3" /> Note: Android voices are managed in your system settings.
-                  </p>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest">Round (sec)</label>
+                  <input type="number" value={settings.roundDuration} onChange={e => setSettings({...settings, roundDuration: Number(e.target.value)})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-red-600 transition-colors" />
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="text-zinc-400 font-bebas text-xl tracking-wider border-b border-zinc-800 pb-2">Timing Parameters</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {[
-                    { label: 'Round Count', key: 'roundCount' },
-                    { label: 'Round Duration (s)', key: 'roundDuration' },
-                    { label: 'Rest Duration (s)', key: 'restDuration' },
-                    { label: 'Prep Time (s)', key: 'prepDuration' },
-                    { label: 'Callout Freq (s)', key: 'calloutFrequency' },
-                    { label: 'Jitter/Random (s)', key: 'calloutFrequencyRandomness' },
-                  ].map((field) => (
-                    <div key={field.key}>
-                      <label className="text-[10px] uppercase font-bold text-zinc-600 block mb-2 tracking-widest">{field.label}</label>
-                      <input 
-                        type="number" 
-                        value={(settings as any)[field.key]}
-                        onChange={(e) => setSettings({...settings, [field.key]: parseFloat(e.target.value) || 0})}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-white focus:outline-none focus:border-red-600 transition-all font-mono"
-                      />
-                    </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest">Rest (sec)</label>
+                  <input type="number" value={settings.restDuration} onChange={e => setSettings({...settings, restDuration: Number(e.target.value)})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-red-600 transition-colors" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest">Call Every (sec)</label>
+                  <input type="number" value={settings.calloutFrequency} onChange={e => setSettings({...settings, calloutFrequency: Number(e.target.value)})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-red-600 transition-colors" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest">Trainer Voice</label>
+                <select 
+                  value={settings.voiceName || ''} 
+                  onChange={e => setSettings({...settings, voiceName: e.target.value})}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-red-600 transition-colors text-sm"
+                >
+                  <option value="">System Default</option>
+                  {availableVoices.map(v => (
+                    <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
                   ))}
-                </div>
+                </select>
               </div>
+            </div>
 
+            <div className="p-8 bg-zinc-950/50 border-t border-zinc-800">
               <button 
-                onClick={() => {
-                  setShowSettings(false);
-                  triggerCallout("Ready");
-                }}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-bebas text-2xl tracking-widest py-5 rounded-[2rem] transition-all shadow-[0_10px_30px_rgba(220,38,38,0.3)] mt-4 active:scale-95"
+                onClick={() => setShowSettings(false)}
+                className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bebas text-xl tracking-widest transition-all shadow-lg active:scale-95"
               >
-                SAVE & APPLY
+                Save Settings
               </button>
             </div>
           </div>
@@ -429,7 +477,6 @@ const App: React.FC = () => {
       )}
 
       <footer className="mt-auto py-10 text-zinc-700 text-[9px] uppercase font-black tracking-[0.4em] text-center border-t border-zinc-900/50 w-full max-w-5xl">
-        "Free app. It-a Costa nothing to use-a."
       </footer>
 
       <style>{`
@@ -445,11 +492,6 @@ const App: React.FC = () => {
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: #27272a;
-        }
-        @keyframes pulse-red {
-          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-          70% { transform: scale(1.02); box-shadow: 0 0 0 20px rgba(220, 38, 38, 0); }
-          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
         }
       `}</style>
     </div>
