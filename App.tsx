@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { TimerStatus, TrainingSettings, Callout } from './types';
 import { generateAndPlayCallout, getAudioContext, getAvailableVoices } from './services/audioService';
@@ -60,15 +59,11 @@ const App: React.FC = () => {
   const wakeLockRef = useRef<any>(null);
   const prevStatusRef = useRef<TimerStatus>(TimerStatus.IDLE);
 
-  // Screen Wake Lock API management
   const requestWakeLock = useCallback(async () => {
     if ('wakeLock' in navigator) {
       try {
         wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
         console.log('Wake Lock active');
-        wakeLockRef.current.addEventListener('release', () => {
-          console.log('Wake Lock was released');
-        });
       } catch (err: any) {
         console.error(`Wake Lock error: ${err.name}, ${err.message}`);
       }
@@ -79,11 +74,10 @@ const App: React.FC = () => {
     if (wakeLockRef.current) {
       await wakeLockRef.current.release();
       wakeLockRef.current = null;
-      console.log('Wake Lock released manually');
+      console.log('Wake Lock released');
     }
   }, []);
 
-  // Re-acquire wake lock if tab becomes visible again
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (status !== TimerStatus.IDLE && status !== TimerStatus.FINISHED && document.visibilityState === 'visible') {
@@ -145,14 +139,17 @@ const App: React.FC = () => {
   };
 
   const handlePause = () => {
-    prevStatusRef.current = status;
-    setStatus(TimerStatus.PAUSED);
-    window.speechSynthesis.cancel();
+    if (status !== TimerStatus.PAUSED) {
+      prevStatusRef.current = status;
+      setStatus(TimerStatus.PAUSED);
+      window.speechSynthesis.cancel();
+    }
   };
 
   const handleResume = () => {
-    // Return to whatever the status was before pausing
-    setStatus(prevStatusRef.current !== TimerStatus.PAUSED ? prevStatusRef.current : TimerStatus.WORK);
+    if (status === TimerStatus.PAUSED) {
+      setStatus(prevStatusRef.current !== TimerStatus.PAUSED ? prevStatusRef.current : TimerStatus.WORK);
+    }
   };
 
   const handleStop = () => {
@@ -418,7 +415,6 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl bg-black/60">
           <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
