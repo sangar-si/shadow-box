@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'apex-box-v2';
+const CACHE_NAME = 'apex-box-v3';
 
 // We cache the core entry point immediately
 const PRE_CACHE = [
@@ -32,15 +32,12 @@ self.addEventListener('activate', (event) => {
 });
 
 // "Network First, then Cache" strategy
-// This ensures you get updates if online, but falls back to cache if offline.
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // If valid response, clone it and put it in cache
         if (response && response.status === 200) {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -50,12 +47,10 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // If network fails, try the cache
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          // If it's a navigation request and not in cache, return the index.html
           if (event.request.mode === 'navigate') {
             return caches.match('/');
           }
